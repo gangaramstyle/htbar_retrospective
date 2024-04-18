@@ -1,0 +1,315 @@
+
+<div class="chart-container" style="position: absolute; height:500px">
+    <canvas id="myChart"></canvas>
+</div>
+<div style="position: absolute; margin-left: 350px; overflow-y: auto; max-height: 300px; padding-right: 50px;" id="sidebar"></div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js" referrerpolicy="no-referrer"></script>
+
+<style>
+    p {
+        font-family: 'Helvetica', sans-serif;
+    }
+</style>
+
+
+<script>
+
+    const queryParams = {};
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    urlParams.forEach((value, key) => {
+        queryParams[key] = value;
+    });
+    console.log(queryParams)
+
+
+
+    const ctx = document.getElementById('myChart');
+    console.log('asdf')
+
+    const loadYaml = async path => {
+        try {
+            // Fetch the YAML file
+            const response = await fetch(path)
+            const yamlText = await response.text()
+
+            // Convert YAML to JSON
+            const jsonData = jsyaml.load(yamlText)
+            return jsonData
+        } catch (error) {
+            console.error('Error loading or parsing bio YAML:', error)
+        }
+    }
+
+    const createChart = async () => {
+        const speakers = await loadYaml("speakers.yaml")
+
+        const getOrCreateLegendList = (chart, id) => {
+            const legendContainer = document.getElementById(id);
+            let listContainer = legendContainer.querySelector('ul');
+
+            if (!listContainer) {
+                listContainer = document.createElement('ul');
+                listContainer.style.display = 'flex';
+                listContainer.style.flexDirection = 'column';
+                listContainer.style.margin = 0;
+                listContainer.style.padding = 0;
+
+                legendContainer.appendChild(listContainer);
+            }
+
+            return listContainer;
+        };
+
+        const htmlLegendPlugin = {
+            id: 'htmlLegend',
+            afterUpdate(chart, args, options) {
+
+                const ul = getOrCreateLegendList(chart, options.containerID);
+
+                // Remove old legend items
+                while (ul.firstChild) {
+                    ul.firstChild.remove();
+                }
+
+                // Reuse the built-in legendItems generator
+                let items = chart.options.plugins.legend.labels.generateLabels(chart);
+                console.log(items)
+
+                //Object.values(speakers).filter(person => person.tags.includes('physician')).map(person => person.name);
+
+                items = items.concat(items.slice(), items.slice());
+
+                items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.style.alignItems = 'center';
+                    li.style.cursor = 'pointer';
+                    li.style.display = 'flex';
+                    li.style.flexDirection = 'row';
+                    li.style.marginLeft = '10px';
+
+                    li.onclick = () => {
+                        const {type} = chart.config;
+                        if (type === 'pie' || type === 'doughnut') {
+                        // Pie and doughnut charts only have a single dataset and visibility is per item
+                            chart.toggleDataVisibility(item.index);
+                        } else {
+                            chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+                        }
+                            chart.update();
+                    };
+
+                    // Color box
+                    const boxSpan = document.createElement('span');
+                    boxSpan.style.background = item.fillStyle;
+                    boxSpan.style.borderColor = item.strokeStyle;
+                    boxSpan.style.borderWidth = item.lineWidth + 'px';
+                    boxSpan.style.display = 'inline-block';
+                    boxSpan.style.flexShrink = 0;
+                    boxSpan.style.height = '20px';
+                    boxSpan.style.marginRight = '10px';
+                    boxSpan.style.width = '20px';
+                    boxSpan.style.marginBottom = '5px';
+
+                    // Text
+                    const textContainer = document.createElement('p');
+                    textContainer.style.color = item.fontColor;
+                    textContainer.style.margin = 0;
+                    textContainer.style.padding = 0;
+                    textContainer.style.textDecoration = item.hidden ? 'line-through' : '';
+
+                    const text = document.createTextNode(item.text);
+                    textContainer.appendChild(text);
+
+                    li.appendChild(boxSpan);
+                    li.appendChild(textContainer);
+                    ul.appendChild(li);
+                });
+            }
+        };
+
+
+        // const getOrCreateLegendList = (chart, id) => {
+        //     const legendContainer = document.getElementById(id);
+        //     let listContainer = legendContainer.querySelector('ul');
+
+        //     if (!listContainer) {
+        //         listContainer = document.createElement('ul');
+        //         listContainer.style.display = 'flex';
+        //         listContainer.style.flexDirection = 'column';
+        //         listContainer.style.margin = 0;
+        //         listContainer.style.padding = 0;
+
+        //         legendContainer.appendChild(listContainer);
+        //     }
+
+        //     return listContainer;
+        // };
+
+
+        const getOrCreateTooltip = (chart) => {
+            let tooltipEl = document.getElementById('sidebar');
+            let listContainer = tooltipEl.querySelector('ul');
+
+            if (!listContainer) {
+                listContainer = document.createElement('ul');
+                listContainer.style.display = 'flex';
+                listContainer.style.flexDirection = 'column';
+                listContainer.style.margin = 0;
+                listContainer.style.padding = 0;
+
+                tooltipEl.appendChild(listContainer);
+            }
+
+            return listContainer;
+        };
+
+            // if (!tooltipEl) {
+            //     tooltipEl = document.createElement('div');
+            //     tooltipEl.style.background = 'rgba(0, 0, 0, 0.7)';
+            //     tooltipEl.style.borderRadius = '3px';
+            //     tooltipEl.style.color = 'white';
+            //     tooltipEl.style.opacity = 1;
+            //     tooltipEl.style.pointerEvents = 'none';
+            //     tooltipEl.style.position = 'absolute';
+            //     tooltipEl.style.transform = 'translate(-50%, 0)';
+            //     tooltipEl.style.transition = 'all .1s ease';
+
+            //     const table = document.createElement('table');
+            //     table.style.margin = '0px';
+
+            //     tooltipEl.appendChild(table);
+            //     chart.canvas.parentNode.appendChild(tooltipEl);
+            //     }
+
+            //     return tooltipEl;
+            // };
+
+        const externalTooltipHandler = (context) => {
+                // Tooltip Element
+                const {chart, tooltip} = context;
+                const ul = getOrCreateTooltip(chart);
+
+                console.log(context)
+                let people = Object.values(speakers).filter(person => person.tags.includes(tooltip.title[0])).map(person => person.name);
+                console.log(people)
+                // Hide if no tooltip
+                if (tooltip.opacity === 0) {
+                    ul.style.opacity = 0;
+                    return;
+                } else {
+                    ul.style.opacity = 1;
+                }
+
+                // Remove old legend items
+                while (ul.firstChild) {
+                    ul.firstChild.remove();
+                }
+
+                items = people
+
+                items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.style.alignItems = 'center';
+                    li.style.display = 'flex';
+                    li.style.flexDirection = 'row';
+                    li.style.marginLeft = '10px';
+
+                    // li.onclick = () => {
+                    //     const {type} = chart.config;
+                    //     if (type === 'pie' || type === 'doughnut') {
+                    //     // Pie and doughnut charts only have a single dataset and visibility is per item
+                    //         chart.toggleDataVisibility(item.index);
+                    //     } else {
+                    //         chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+                    //     }
+                    //         chart.update();
+                    // };
+
+                    // // Color box
+                    // const boxSpan = document.createElement('span');
+                    // boxSpan.style.background = item.fillStyle;
+                    // boxSpan.style.borderColor = item.strokeStyle;
+                    // boxSpan.style.borderWidth = item.lineWidth + 'px';
+                    // boxSpan.style.display = 'inline-block';
+                    // boxSpan.style.flexShrink = 0;
+                    // boxSpan.style.height = '20px';
+                    // boxSpan.style.marginRight = '10px';
+                    // boxSpan.style.width = '20px';
+                    // boxSpan.style.marginBottom = '5px';
+
+                    // Text
+                    const textContainer = document.createElement('p');
+                    // textContainer.style.color = item.fontColor;
+                    textContainer.style.font = 'Arial';
+                    textContainer.style.margin = 0;
+                    textContainer.style.padding = 0;
+                    // textContainer.style.textDecoration = item.hidden ? 'line-through' : '';
+
+                    const text = document.createTextNode(item);
+                    text.font = 'Arial'
+                    textContainer.appendChild(text);
+
+                    // li.appendChild(boxSpan);
+                    li.appendChild(textContainer);
+                    ul.appendChild(li);
+                });
+        };
+
+        const labels = queryParams.queries.split('|');
+        const generateData = () => {
+            const speakerCounts = labels.map(label => 
+                Object.values(speakers).filter(person => person.tags.includes(label)).length
+            );
+            return {
+                labels: labels,
+                datasets: [{
+                    label: '# of speakers',
+                    data: speakerCounts,
+                    borderWidth: 1
+                }]
+            }
+        }
+
+        const data = generateData()
+        console.log(data)
+
+
+        new Chart(ctx, {
+            type: 'pie',
+            data: data,
+            options: {
+                plugins: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    // htmlLegend: {
+                    // // ID of the container to put the legend in
+                    //     containerID: 'legend-container',
+                    //     position: 'top'
+                    // },
+                    // legend: {
+                    //     display: false,
+                    // },
+                    tooltip: {
+                        enabled: true,
+                        position: 'nearest',
+                        // events: ["click", "hover"],
+                        //onClick: externalTooltipHandler,
+                        external: externalTooltipHandler
+                    }
+                }
+            },
+            // plugins: [htmlLegendPlugin]
+        });
+
+    }
+
+    createChart()
+
+
+</script>
+
